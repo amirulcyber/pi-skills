@@ -1,0 +1,23 @@
+# Reusable ruff config — the "static hygiene floor" of the dev-best-practices skill.
+# Drop into any project or point lint.sh at it via `--config`.
+#
+# Curated, opt-in rule set rather than select-everything-then-ignore. Each group maps
+# to a Power-of-Ten rule (see SKILL.md → Layer 6):
+#   E/W/F  pycodestyle + pyflakes — syntax, undefined names, dead code (rule 11)
+#   B      flake8-bugbear — B018 useless/ignored expression (rule 7)
+#   BLE    flake8-blind-except — BLE001 blind except (rule 6: never swallow errors)
+#   I      isort — import ordering
+#   RUF100 unused noqa directives (rule 11)
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = ["E4", "E7", "E9", "F", "B", "BLE", "I", "RUF100"]
+
+# BLE001 (blind except) is deliberately KEPT ACTIVE — it is the silent-failure guard.
+# Broad excepts must be reviewed and tagged `# noqa: BLE001 — <reason>` per site; a
+# genuine `except: pass` still fails. Do not add BLE001 here.
+#
+# B018 (useless expression) is the mechanical proxy for Power-of-Ten rule 7 — it
+# catches statements that evaluate and discard a result (e.g. `a == b` meant as `a = b`).
+# Kept active; suppression must be per-line with justification.
