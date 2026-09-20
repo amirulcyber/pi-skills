@@ -52,3 +52,7 @@ CLI: `python3 capmonster/capmonster.py` prints balance (spend: $0).
 ## Usage log (append every spend)
 
 - 2026-09-20 skill created; balance $4.9916 at 18:33 UTC. No solves yet.
+- 2026-09-20 18:41Z ZECIBLE contact v3 (sitekey `6Lfa…`, action
+  `contactform`): token injected → send refused. $0.0009.
+- 2026-09-20 18:42Z same gate, `grecaptcha.execute` override → refused.
+  $0.0009. Verdict: not score-related; STOP on this shape. Balance $4.9898.
