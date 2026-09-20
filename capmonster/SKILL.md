@@ -59,3 +59,6 @@ CLI: `python3 capmonster/capmonster.py` prints balance (spend: $0).
 - 2026-09-20 18:55Z Grammarly invisible-Enterprise: enterprise task →
   instant INVALID_SITEKEY; plain-v2 task → worker failed same way ~3min.
   $0 spent. STOP — key enterprise-bound. Balance $4.9898.
+- 2026-09-20 19:20Z BookBeat v2 image challenge: task accepted, token
+  2660 chars (~$0.0006), injected+callback — page instance stayed open,
+  no submit. Farm tokens don't cross sessions. STOP. Balance $4.9892.
