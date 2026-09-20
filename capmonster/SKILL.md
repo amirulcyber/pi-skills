@@ -56,3 +56,6 @@ CLI: `python3 capmonster/capmonster.py` prints balance (spend: $0).
   `contactform`): token injected → send refused. $0.0009.
 - 2026-09-20 18:42Z same gate, `grecaptcha.execute` override → refused.
   $0.0009. Verdict: not score-related; STOP on this shape. Balance $4.9898.
+- 2026-09-20 18:55Z Grammarly invisible-Enterprise: enterprise task →
+  instant INVALID_SITEKEY; plain-v2 task → worker failed same way ~3min.
+  $0 spent. STOP — key enterprise-bound. Balance $4.9898.
