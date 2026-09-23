@@ -21,7 +21,6 @@ Non-negotiable rules:
   a NEW hypothesis, not persistence.
 - **Failure-mode change ⇒ stop.** If failure 2 differs in kind from failure 1,
   escalate; do not add a third variant of the same idea.
-- **Never create credentials/accounts/resources merely to exercise automation.**
 - **Show-once values:** exactly one automated capture attempt, then handoff.
 - Every primitive returns structured JSON. Screenshots are EVIDENCE, never
   the primary observation channel.
