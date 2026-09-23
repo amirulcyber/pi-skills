@@ -1,6 +1,6 @@
 ---
 name: openspec
-description: Spec-driven change proposals with per-project spec storage. Use when the user wants to propose, plan, or spec a change before implementing. Scaffolds proposal/design/tasks/spec artifacts inside the project's own openspec/ dir — no central store, no CLI dependency. Planning only: never implement during propose.
+description: Spec-driven change proposals with per-project spec storage. Use when the user wants to propose, plan, or spec a change before implementing. Scaffolds proposal/design/tasks/spec artifacts inside the project's own openspec/ dir — no central store, no CLI dependency. Planning only — never implement during propose.
 ---
 
 # openspec
