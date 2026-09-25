@@ -1,5 +1,11 @@
 .env
 
+# Secrets — NEVER commit these. The git-amirulcyber skill reads them from the
+# working tree at runtime (key for git-over-SSH, .env / gh_token for the `gh`
+# API). `key_opencode_2026` matches only the private key, NOT the .pub file.
+key_opencode_2026
+gh_token
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

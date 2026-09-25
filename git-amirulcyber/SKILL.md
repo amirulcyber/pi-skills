@@ -1,43 +1,102 @@
 ---
 name: git-amirulcyber
-description: Manage GitHub repositories over HTTPS using a Personal Access Token (PAT). Provides session-scoped Git configuration for the Pi agent.
+description: Manage GitHub repositories for the amirulcyber account over SSH (bundled key) plus the REST API (PAT), with session-scoped git identity. Provides the single git/gh environment helper for both hosts (neotokyo opencode container, saturn Pi VM). Use for any Git or gh operation on a repo under amirulcyber.
 ---
 
 # git-amirulcyber
 
-Use this skill for Git operations for the configured GitHub account using a PAT.
+Use this skill for Git operations for the configured GitHub account.
+
+**Single source of truth.** `$SKILL_ROOT/git-amirulcyber/` holds the helper,
+the docs, and the credentials. The old
+`/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/` tree is
+**deprecated** — source this skill's `git-env.sh`; it falls back to the old
+location for credentials only until they are migrated (see below), and prints a
+warning on stderr while that fallback is in use.
 
 ## Fixed configuration
 
-- Authentication: GitHub Personal Access Token (PAT)
-- Repository URL pattern: `https://github.com/<owner>/<repo>.git`
-- GitHub CLI (`gh`): `/workspace/.local/bin/gh` or system `gh`
-- Committer Identity: Scoped to session variables, defaults to Pi agent identity.
+- Git transport: SSH with the bundled key only (`IdentitiesOnly=yes`)
+- API transport: PAT (`gh repo create` and other REST calls need it; the SSH key
+  does not cover the API)
+- Repository URL pattern: `git@github.com:amirulcyber/<repo>.git`
+- Committer identity: session-scoped (`GIT_*_NAME`/`GIT_*_EMAIL`), never a
+  global git config change
+
+**Host-dependent paths.** `git-env.sh` resolves every path from its own
+location, so the same command works on both hosts — the table below is for
+reading, not for typing. Resolve the host from the marker-file table in
+`../AGENTS.md` (no `hostname` call needed).
+
+| What | neotokyo (opencode container) | saturn (Pi VM) |
+|---|---|---|
+| `SKILL_ROOT` | `/workspace/pi-skills` | `~/piworkspace/pi-skills` |
+| Durable `gh` | `/workspace/.local/bin/gh` | `~/.local/bin/gh` or system `gh` |
+| `GIT_ENV` | `$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh` | same path, different `SKILL_ROOT` |
+| Default identity | `opcdamirulcyber` | `opcdamirulcyber`; export `GIT_AUTHOR_*`/`GIT_COMMITTER_*` before sourcing to use `pi-agent` instead |
 
 ## Setup
 
-Set up your PAT in the environment file:
-`echo "GH-PAT-PI=<your_token>" > /home/johnn/piworkspace/pi-skills/git-amirulcyber/.env`
+Credentials live **next to `git-env.sh`**, in its own skill dir:
 
-## Known gaps
+| File | Holds | Gitignored |
+|---|---|---|
+| `key_opencode_2026` (+ `.pub`) | SSH private key for git-over-SSH | private key yes, `.pub` no |
+| `.env` | `GH-PAT-AMIRULCYBER-OPCD` (fine-grained, admin — can create repos), or `GH-PAT-AMIRULCYBER-PI` / `GH-PAT-PI` | yes |
+| `gh_token` | bare PAT, first line; fallback if `.env` has none | yes |
 
+`git-env.sh` checks them in that order and never prints a key or token. Load
+order for the token: ambient `GH_TOKEN` → `.env` (first recognised variable
+name) → `gh_token`.
 
-The GitHub CLI is installed in a durable location:
+```bash
+# once, per host
+printf 'GH-PAT-AMIRULCYBER-OPCD=%s\n' "YOUR_TOKEN" > "$SKILL_ROOT/git-amirulcyber/.env"
+chmod 600 "$SKILL_ROOT/git-amirulcyber/.env"
+```
 
-- binary: `/workspace/.local/bin/gh` (durable, survives recreate)
-- PATH symlink: `/home/appuser/.local/bin/gh` (first on PATH)
+## Migrating credentials out of the deprecated tree (one-off, neotokyo)
+
+The consolidated helper still reads `key_opencode_2026` / `.env` / `gh_token`
+from `/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/` when they
+are absent here, and warns on stderr. To finish the move, copy them across
+(never `cat` — the key must not hit a transcript) and re-run the preflight:
+
+```bash
+cd /workspace
+cp -p dir-git-amirulcyber/opcd-skills/git-amirulcyber/key_opencode_2026  pi-skills/git-amirulcyber/
+cp -p dir-git-amirulcyber/opcd-skills/git-amirulcyber/key_opencode_2026.pub pi-skills/git-amirulcyber/
+cp -p dir-git-amirulcyber/opcd-skills/git-amirulcyber/.env             pi-skills/git-amirulcyber/
+[ -f dir-git-amirulcyber/opcd-skills/git-amirulcyber/gh_token ] && \
+  cp -p dir-git-amirulcyber/opcd-skills/git-amirulcyber/gh_token       pi-skills/git-amirulcyber/
+chmod 600 pi-skills/git-amirulcyber/key_opencode_2026 pi-skills/git-amirulcyber/.env
+bash pi-skills/git-amirulcyber/scripts/git-env.sh --check   # warning must be gone
+```
+
+`.gitignore` already ignores `key_opencode_2026`, `.env`, and `gh_token`, so
+the copy cannot be committed — verify with `git check-ignore` before committing
+anything in that dir. Once the preflight is clean, the deprecated tree can go.
+
+## `gh` binary location
+
+`gh` lives in the host's durable bin dir, which is why the helper resolves it
+rather than hardcoding one:
+
+- neotokyo: `/workspace/.local/bin/gh` (survives a container recreate), with
+  `/home/appuser/.local/bin/gh` first on PATH
+- saturn: `~/.local/bin/gh` or the system `gh` (2.46.0)
 
 The helper script exports `GH_BIN` (durable binary first, then PATH). Source it once:
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 ```
 
 To resolve `gh` manually:
 
 ```bash
 GH_BIN="$(command -v gh || true)"
-[ -n "$GH_BIN" ] || GH_BIN="/workspace/.local/bin/gh"
+[ -n "$GH_BIN" ] || GH_BIN="/workspace/.local/bin/gh"   # neotokyo durable path
 ```
 
 Before GitHub-side API operations such as `gh repo create`, verify CLI authentication:
@@ -60,7 +119,7 @@ falls back to `<skill-root>/gh_token` (bare token on the first line).
 To add or rotate the token:
 
 ```bash
-ENV_FILE="/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/.env"
+ENV_FILE="$SKILL_ROOT/git-amirulcyber/.env"
 printf 'GH-PAT-AMIRULCYBER-OPCD=%s\n' "YOUR_TOKEN_HERE" > "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 ```
@@ -73,7 +132,7 @@ The PAT must belong to the `amirulcyber` account and be able to create repositor
 Verify:
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 "$GH_BIN" auth status
 ```
 
@@ -89,23 +148,24 @@ at the bundled key only), `GH_BIN`, and the session-scoped committer identity
 (`opcdamirulcyber <opcdamirulcyber@users.noreply.github.com>`):
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 ```
 
 The helper resolves an `SSH_BIN` before anything else: first working `ssh` on
-`PATH` (`ssh -V` must run), then `/workspace/.local/bin/ssh` (durable), then
+`PATH` (`ssh -V` must run), then the host's durable bin dir
+(`$GIT_DURABLE_BIN` — `/workspace/.local/bin` on neotokyo), then
 `~/.local/bin/ssh`. `GIT_SSH_COMMAND` uses that absolute path, so git-over-SSH
 no longer depends on ambient `PATH` — this fixed a session where no system
 client existed (`cannot run ssh`). If no binary is found anywhere, sourcing
 fails loud with install instructions instead of failing later at push time.
 If you install one by hand (e.g. an extracted distro `openssh-client`), verify
-its checksum against the signed package index first, and prefer the durable
-`/workspace/.local/bin` so it survives recreates.
+its checksum against the signed package index first, and prefer the host's
+durable bin dir so it survives recreates.
 
 Manual fallback if the helper is unavailable:
 
 ```bash
-export GIT_SSH_COMMAND="ssh -i \"/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/key_opencode_2026\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+export GIT_SSH_COMMAND="ssh -i \"$SKILL_ROOT/git-amirulcyber/key_opencode_2026\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 ```
 
 The helper also tightens the key permissions to 600 without displaying the key.
@@ -137,7 +197,7 @@ REPO_URL="git@github.com:amirulcyber/amirulcyber.github.io.git"
 ## Clone a repository
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 git clone "$REPO_URL"
 ```
 
@@ -166,7 +226,7 @@ git log --oneline -n 10
 ## Update an existing checkout
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 git fetch --prune origin
 git pull --ff-only
 ```
@@ -212,7 +272,7 @@ Use `git add -A` only when the user intends all current changes to be committed.
 For a branch already tracking a remote:
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 git push
 ```
 
@@ -229,7 +289,7 @@ Never use `--force` or `--force-with-lease` unless explicitly requested.
 For the Amirul Cyber blog:
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 git clone git@github.com:amirulcyber/amirulcyber.github.io.git
 cd amirulcyber.github.io
 git status --short
@@ -263,7 +323,7 @@ git remote add origin "git@github.com:amirulcyber/$REPO_NAME.git"
 Then test whether the GitHub repository already exists:
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 git ls-remote "git@github.com:amirulcyber/$REPO_NAME.git"
 ```
 
@@ -287,7 +347,7 @@ Use `--public` only after the user has explicitly requested public visibility an
 Check SSH access without showing key material:
 
 ```bash
-source "/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/scripts/git-env.sh"
+source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 ssh -T git@github.com
 ```
 

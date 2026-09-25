@@ -40,7 +40,7 @@ Key lives in `.env` beside the script (600, gitignored — verify with
 Env vars override `.env`.
 
 ```python
-import sys; sys.path.insert(0, "~/piworkspace/pi-skills/jev")
+import sys; sys.path.insert(0, "<SKILL_ROOT>/jev")  # this skill's dir; absolute value per host (see ../AGENTS.md)
 from jev import decide, score, null_prob
 decide(state, vulnerable="…", secure="…")   # choice verdict
 score(state, ["very unlikely","unlikely","likely","very likely"])

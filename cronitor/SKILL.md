@@ -11,15 +11,19 @@ process killed mid-run, host reboot) gets a heartbeat monitor.
 
 ## Key & tooling
 
-- API key: `~/piworkspace/pi-skills/cronitor/.env` (`CRONITOR_API_KEY=...`,
+- `$SKILL_ROOT` in this file = this skill's directory. Its absolute value is
+  per host (`/workspace/pi-skills` on neotokyo, `~/piworkspace/pi-skills` on
+  saturn) — resolve the host from the marker-file table in `../AGENTS.md`
+  (no `hostname` call needed). Never hardcode either path.
+- API key: `$SKILL_ROOT/cronitor/.env` (`CRONITOR_API_KEY=...`,
   chmod 600, gitignored — management API only)
 - Ping key: same file (`CRONITOR_PING_KEY=...`) — telemetry-only, used in
   ALL ping URLs; a leaked ping URL cannot manage monitors
-- Helper: `~/piworkspace/pi-skills/cronitor/cronitor_ping.py` (stdlib only;
+- Helper: `$SKILL_ROOT/cronitor/cronitor_ping.py` (stdlib only;
   pings use the ping key, `get`/`create` use the API key)
 
 ```bash
-S=~/piworkspace/pi-skills/cronitor/cronitor_ping.py
+S=$SKILL_ROOT/cronitor/cronitor_ping.py
 $S ping cIJGdE                 # complete (success)
 $S ping cIJGdE --fail          # failure event
 $S ping cIJGdE --msg "why it failed"
@@ -65,7 +69,7 @@ account has an alert target (dashboard → Notifications).
 
 ```python
 def cronitor_ping(failed: bool) -> None:
-    # key from CRONITOR_KEY env or ~/piworkspace/pi-skills/cronitor/.env
+    # key from CRONITOR_KEY env or $SKILL_ROOT/cronitor/.env
     ...
 ```
 

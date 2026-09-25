@@ -22,7 +22,10 @@ with Camoufox(headless=False, geoip=True,   # geoip needs camoufox[geoip]
 
 - **Headed + geoip is the combo that works.** Headless sticks on CF;
   headed without geoip leaks timezone/locale vs proxy IP (LeakWarning).
-- **Needs Xvfb**: `DISPLAY=:99` (Xvfb :99 already runs on saturn).
+- **Needs Xvfb**: `DISPLAY=:99` — that display already runs on **saturn**; on
+  neotokyo there is no X server, so start one (`Xvfb :99`) or run headless and
+  expect it to stick on Cloudflare. Scratch paths here are saturn's; the
+  neotokyo scratch dir is `/tmp/opencode` (see the host table in `../AGENTS.md`).
 - **Memory**: one browser at a time (~400MB); kill strays with
   `pkill -f "[c]hrome-linux"` / `[f]irefox` bracket patterns (never a
   pattern present in your own command line — it suicides the shell).

@@ -26,7 +26,7 @@ except `api.capmonster.cloud`).
 ## Usage
 
 ```python
-import sys; sys.path.insert(0, "~/piworkspace/pi-skills/capmonster")
+import sys; sys.path.insert(0, "<SKILL_ROOT>/capmonster")  # this skill's dir; absolute value per host (see ../AGENTS.md)
 from capmonster import get_balance, solve
 get_balance()  # pre-flight: know the budget
 token = solve({"type": "RecaptchaV2TaskProxyless",

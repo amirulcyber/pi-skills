@@ -117,19 +117,23 @@ Mechanical rule→tool mapping:
 
 **Shipped here as reusable assets:**
 - `ruff.toml` — curated select `E4/E7/E9/F/B/BLE/I/RUF100`; **B018** (rule 7), **BLE001** (rule 6), and **RUF100** (rule 11) stay active; no global ignore list to rot.
-- `lint.sh` — compile → selftest → pytest → ruff → pyright → nasa (advisory) → bash guard. Any project drops in a one-line `extend = "~/piworkspace/pi-skills/dev-best-practices/ruff.toml"` or calls `lint.sh` with env knobs `PY`, `SELFTEST`, `TEST_PY`, `PYRIGHT`.
+- `lint.sh` — compile → selftest → pytest → ruff → pyright → nasa (advisory) → bash guard. Any project drops in a one-line `extend = "<SKILL_ROOT>/dev-best-practices/ruff.toml"` or calls `lint.sh` with env knobs `PY`, `SELFTEST`, `TEST_PY`, `PYRIGHT`.
 - `bash-guard-check.sh` — flags unguarded `VAR=$(… grep …)` under `set -e` (the silent-abort class above); wired into `lint.sh` as the bash floor.
 - `ts-qc-check.sh` — TypeScript/Node gate (see "TypeScript / Node tooling" below): pnpm build-approval sanity, placeholder-literal scan, lockfile-committed check, then `pnpm lint && pnpm typecheck && pnpm test`.
 
+`<SKILL_ROOT>` = this skill's directory, and its absolute value differs per host
+(`/workspace/pi-skills` on neotokyo, `~/piworkspace/pi-skills` on saturn) —
+resolve the host from the marker-file table in `../AGENTS.md`. Substitute
+before writing the path; never hardcode either one.
+
 **Ruff workflow (2026-09-02 — do NOT copy the ruleset):**
 - One canonical `ruff.toml` here; projects reference it via a 1-line `ruff.toml` containing
-  `extend = "~/piworkspace/pi-skills/dev-best-practices/ruff.toml"` (exemplar:
-  `/workspace/coding/intel-monitor/ruff.toml`). Project-local `[lint]` overrides go in that
+  `extend = "<SKILL_ROOT>/dev-best-practices/ruff.toml"`. Project-local `[lint]` overrides go in that
   project file, never in the shared one.
-- Ruff is **pinned at 0.16.5**. Durable install: binary lives in
-  `/workspace/coding/tools/bin/ruff` (bind-mounted, survives recreate) with a symlink in
-  `/home/piuser/.pi/agent/bin/` (first on PATH). `lint.sh` pins the same version via
-  `uvx ruff@0.16.5` so it stays reproducible even without the local install.
+- Ruff is **pinned at 0.16.5**. Keep the durable binary in a host mount so it
+  survives a container recreate, and symlink it onto PATH (neotokyo: durable bins
+  are `/workspace/.local/bin`; saturn: `~/.local/bin`). `lint.sh` pins the same
+  version via `uvx ruff@0.16.5` so it stays reproducible even without the local install.
 - Run **bare `ruff check .`** from any project that has the pointer — it resolves the curated
   set. Never run bare ruff with *no* config: that silently uses ruff defaults (S324, DTZ006, …),
   a different rule set that produces false-positive noise.
