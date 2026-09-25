@@ -255,29 +255,45 @@ _Only valid when `~/piworkspace/saturn.host` is present._
   (`ssh` on PATH), `rg` 15.2.0, `fd` 10.5.0, `git` 2.53.0. `busybox` is not
   installed. Where each resolves from matters, so read this before trusting a
   version claim:
-  - **`python3` is mise's, not the system one.** It resolves to the mise shim
-    (`~/.local/share/mise/shims/python3` → mise's CPython 3.14.4). A system
-    `/usr/bin/python3` → `python3.14` also exists and reports the same 3.14.4,
-    so the version looked "system" by coincidence. Project venvs built with
-    `uv venv` point at whichever `python3` was current — check
-    `readlink -f .venv/bin/python` before assuming an interpreter.
+  - **`python3` really is the system interpreter** (3.14.4,
+    `/usr/bin/python3` → `python3.14`) — corrected 2026-09-25, after an audit
+    first got this wrong. A mise shim for `python3` sits earlier on `PATH`, but
+    it *delegates* rather than providing an interpreter: `sys.executable` is
+    `/usr/bin/python3`, and `mise which python3` reports "not currently active".
+    mise's only Python install is 3.12.14 and nothing selects it (no `python` in
+    mise's `[tools]`), so it stays unused even with `mise activate` — and bare
+    `python` (no `3`) is an erroring shim. Don't infer the provider from which
+    file is first on `PATH`; check `python3 -c 'import sys; print(sys.executable)'`
+    or `readlink -f .venv/bin/python`. This is why the venvs in
+    `piproject/*/` point at `/usr/bin/python3.14` and that is correct.
   - **`uv`/`uvx` come from snap** (`/snap/bin/uv`), not mise. Version pins live
     in `~/.config/mise/config.toml` (`go`, `node`, `pnpm` only).
   - **`rg` and `fd` are Pi's own binaries** under `~/.pi/agent/bin`, not distro
     packages — so they are on PATH for Pi sessions only (see the PATH caveat).
   - `mise` itself self-reports 2026.9.14 as available; the installed build is
     2026.9.1. `mise self-update` is not automatic.
-- **`~/.local/bin` is NOT on `PATH` for a non-interactive shell — this is a real
-  finding, not a nit.** `~/.bash_profile` is a copy of `~/.bashrc` and opens
-  with the `case $- in *i*) ;; *) return;; esac` guard, so *every* PATH line in
-  it (`~/.local/bin` at line 122, the mise `activate` eval, the node install
-  dir) is dead code for any non-interactive consumer. Verified: `env -i
-  HOME=/home/johnn bash -c 'command -v mise'` → not found, and even
-  `bash -lc` does not get `~/.local/bin` (bash reads `~/.bash_profile`, which
-  shadows the correct unguarded block in `~/.profile`). It resolves inside Pi
-  sessions only because the Pi harness injects `PATH` itself. Anything run
-  outside Pi — cron, `ssh host cmd`, another agent, a compose service — will not
-  see `cloudflared` or `mise`; use absolute paths there.
+- **`PATH` for non-interactive shells — was broken, fixed 2026-09-25.** Until then
+  `~/.bash_profile` was a *copy* of `~/.bashrc` opening with the
+  `case $- in *i*) ;; *) return;; esac` guard, so every PATH line in it was dead
+  code outside a human at a terminal; and because bash prefers
+  `~/.bash_profile` for login shells, it shadowed the correct unguarded block in
+  `~/.profile`. `env -i HOME=~ bash -lc 'command -v mise'` found nothing — cron,
+  `ssh saturn <cmd>`, and other agents all lost the toolchain. `~/.bash_profile`
+  is now a thin shim that sources `~/.profile`; the mise toolchain is resolved
+  there dynamically via `mise bin-paths` (the real install dirs) and the
+  interactive-only aliases, `nuclei_site`/`nuclei_file`, and `mise activate` live
+  in `~/.bashrc`. Backups: `~/shell-backup-<ts>/`. Two deliberate choices:
+  - **The mise *shims* dir is not on `PATH`.** A shim for a tool with no active
+    version aborts with `No version is set for shim: <tool>`, and it shadows
+    working system binaries — `pip` is the live example: shimmed it would error,
+    unshimmed it is `/usr/bin/pip`. This is the same failure that broke `pnpm`
+    before it was registered in `[tools]`.
+  - **A non-login, non-interactive shell still reads no rc file at all**, so
+    `ssh saturn 'mise …'` needs absolute paths (`~/.local/bin/mise`) or a
+    `BASH_ENV`. That gap is inherent to bash, not to this layout.
+  - `/usr/local/go/bin`, which the old `.bash_profile` appended, **does not
+    exist** on this host — go comes from mise. The new `.profile` guards on
+    `-d`, so the dead entry is gone; the Pi harness `PATH` may still carry it.
 - `pnpm` 11.25.0 is mise's own build and it executes fine (no `libatomic.so.1`
   problem, unlike neotokyo) — corepack 0.35.0 is present but unused. It was
   *unregistered* until 2026-09-25: `~/.local/share/mise/installs/pnpm/11.25.0`
