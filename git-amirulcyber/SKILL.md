@@ -33,7 +33,7 @@ reading, not for typing. Resolve the host from the marker-file table in
 | `SKILL_ROOT` | `~/piworkspace/pi-skills` | `~/piworkspace/pi-skills` |
 | Durable `gh` | `~/piworkspace/.local/bin/gh` | `~/.local/bin/gh` or system `gh` |
 | `GIT_ENV` | `$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh` | same path, different `SKILL_ROOT` |
-| Default identity | `opcdamirulcyber` | `opcdamirulcyber`; export `GIT_AUTHOR_*`/`GIT_COMMITTER_*` before sourcing to use `pi-agent` instead |
+| Default identity | `pi-agent` | `pi-agent` — one identity on both hosts (owner decision 2026-09-25). Export `GIT_AUTHOR_*`/`GIT_COMMITTER_*` before sourcing to override. Attribution only; auth is the bundled `amirulcyber` key on both. |
 
 ## Setup
 
@@ -150,7 +150,7 @@ container recreates (unlike `gh auth login`, which writes to the ephemeral
 Before any command that contacts GitHub, source the helper script. It resolves its own
 location (works from any working directory) and exports `GIT_SSH_COMMAND` (pointing Git
 at the bundled key only), `GH_BIN`, and the session-scoped committer identity
-(`opcdamirulcyber <opcdamirulcyber@users.noreply.github.com>`):
+(`pi-agent <pi-agent@users.noreply.github.com>`):
 
 ```bash
 source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"

@@ -121,13 +121,19 @@ export GIT_SSH_COMMAND="\"$SSH_BIN\" -i \"$GIT_AMIRULCYBER_KEY\" -o IdentitiesOn
 # ---------------------------------------------------------------------------
 # Committer identity — session-scoped (GIT_*_NAME/EMAIL override user.name/
 # email without touching any git config), so the global config and other repos
-# stay untouched. Pre-set values win, so a host can pick its own identity
-# (saturn's Pi sessions use `pi-agent`) by exporting these before sourcing.
+# stay untouched. One identity for both hosts by owner decision (2026-09-25):
+# `pi-agent` everywhere, so a commit's author says "an agent did this" on
+# either machine and the two hosts are indistinguishable in the log. Pre-set
+# values still win, so a host can override by exporting before sourcing.
+#
+# This is attribution only — auth is the bundled key, which is the `amirulcyber`
+# account on both hosts. The noreply address must be registered under that
+# account's GitHub settings or commits will not be linked to it.
 # ---------------------------------------------------------------------------
-export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-opcdamirulcyber}"
-export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-opcdamirulcyber@users.noreply.github.com}"
-export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-opcdamirulcyber}"
-export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-opcdamirulcyber@users.noreply.github.com}"
+export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-pi-agent}"
+export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-pi-agent@users.noreply.github.com}"
+export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-pi-agent}"
+export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-pi-agent@users.noreply.github.com}"
 
 # ---------------------------------------------------------------------------
 # GitHub CLI binary: durable install first, then PATH.
