@@ -94,6 +94,12 @@ class HostProfile:
     mise_shims: str | None = "~/.local/share/mise/shims"
     #: Where the workspace actually lives. Never the `/workspace` compat symlink.
     workspace: str = "~/piworkspace"
+    #: Throwaway scratch dir, or None when the host declares none. Per-host
+    #: because `$SCRATCH` is a container convention: neotokyo's is a tmpfs that
+    #: dies on recreate, saturn's is ordinary `/tmp`. A host that declares no
+    #: scratch must SKIP, not fail — hardcoding one host's path made this check
+    #: report a false failure on the other.
+    scratch: str | None = None
 
 
 NEOTOKYO = HostProfile(
@@ -139,6 +145,10 @@ SATURN = HostProfile(
     # packaged at /usr/libexec/docker/cli-plugins/.
     compose_argv=("docker", "compose"),
     durable_bin="~/.local/bin",
+    # Plain /tmp here, not neotokyo's tmpfs: this is a VM, and real artifacts
+    # belong in ~/piworkspace regardless. Kept explicit so the check verifies a
+    # real directory instead of skipping.
+    scratch="/tmp",
 )
 
 PROFILES: dict[str, HostProfile] = {"neotokyo": NEOTOKYO, "saturn": SATURN}
@@ -543,7 +553,14 @@ def check_scratch(profile: HostProfile, probe: Probe) -> Result:
     is a tmpfs, deliberately, because real artifacts belong in the workspace
     mount. A check that demanded durable scratch would re-break that.
     """
-    scratch = os.environ.get("SCRATCH", "/tmp/opencode")
+    scratch = os.environ.get("SCRATCH") or profile.scratch
+    if not scratch:
+        return Result(
+            "scratch",
+            True,
+            f"host {profile.host_id} declares no scratch dir ($SCRATCH unset) — nothing to check",
+            skipped=True,
+        )
     path = Path(scratch)
     if not probe.exists(path):
         return Result("scratch", False, f"{path} does not exist")
