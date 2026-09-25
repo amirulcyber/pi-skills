@@ -250,7 +250,7 @@ _Only valid when `~/piworkspace/saturn.host` is present._
   the rule; let them decide. (2026-09-06: opened 3000/8025 for GarudaSafe demo,
   then closed on user instruction.)
 - Toolchain (verified 2026-09-25): `node` v24.20.0 (via `mise`, PATH-first),
-  `npm` 11.19.0, `python3` 3.14.4, `uv`/`uvx` 0.12.17, `mise` 2026.9.1,
+  `npm` 11.19.0, `python3` 3.14.4, `uv`/`uvx` 0.12.17, `mise` 2026.9.14,
   `docker` 29.8.0 + `docker compose` v5.5.1, `gh` 2.46.0, OpenSSH 10.2p1
   (`ssh` on PATH), `rg` 15.2.0, `fd` 10.5.0, `git` 2.53.0. `busybox` is not
   installed. Where each resolves from matters, so read this before trusting a
@@ -270,8 +270,13 @@ _Only valid when `~/piworkspace/saturn.host` is present._
     in `~/.config/mise/config.toml` (`go`, `node`, `pnpm` only).
   - **`rg` and `fd` are Pi's own binaries** under `~/.pi/agent/bin`, not distro
     packages — so they are on PATH for Pi sessions only (see the PATH caveat).
-  - `mise` itself self-reports 2026.9.14 as available; the installed build is
-    2026.9.1. `mise self-update` is not automatic.
+  - `mise` was updated 2026.9.1 → 2026.9.14 in place, which also brings this
+    host level with neotokyo. `mise self-update` replaces only the mise binary;
+    the tool installs under `~/.local/share/mise/installs/` are untouched, so
+    the version pins in `~/.config/mise/config.toml` (`go`, `node`, `pnpm`) still
+    decide what runs. `mise doctor` reports one benign warning — mise's paths are
+    not first in `PATH` because the Pi harness prepends `~/.pi/agent/bin`
+    (`rg`, `fd`), which mise does not manage.
 - **`PATH` for non-interactive shells — was broken, fixed 2026-09-25.** Until then
   `~/.bash_profile` was a *copy* of `~/.bashrc` opening with the
   `case $- in *i*) ;; *) return;; esac` guard, so every PATH line in it was dead
