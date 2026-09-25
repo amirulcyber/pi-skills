@@ -234,26 +234,57 @@ its `.env` only.
 
 _Only valid when `~/piworkspace/saturn.host` is present._
 
-**Environment** (host VM `saturn`, IP `10.148.0.3`, verified 2026-09-06):
+**Environment** (host VM `saturn`, IP `10.148.0.3`, verified 2026-09-25):
 
 - This sandbox IS the host VM, ufw-managed, egress `34.126.121.241`
   (AS396982 — a datacenter range that trips reCAPTCHA/DataDome walls; use the
   residential tunnel when a target cares). Services bound here are directly
   reachable from the user's host once the firewall allows them.
+- A Tailscale interface is also present (`tailscale0`, `100.76.245.117/32`),
+  alongside `docker0` (`172.17.0.1/16`) and per-compose bridges
+  (`172.18`–`172.21`).
 - **ufw is active with default INPUT DROP** — only SSH (22, fail2ban-limited),
   mosh, and UDP 60000:61000 are open by default. **NEVER modify ufw
   (allow/delete) without explicit user approval — this is a production server.**
   If the user reports "can't access <port>", report the ufw status and *propose*
   the rule; let them decide. (2026-09-06: opened 3000/8025 for GarudaSafe demo,
   then closed on user instruction.)
-- Toolchain: `node` v24.20.0 (via `mise`, PATH-first), `npm` 11.19.0, `python3`
-  3.14.4 (system), `uv`/`uvx` 0.12.6, `mise` 2026.9.1, `docker` 29.8.0 +
-  `docker compose` v5.5.1, `gh` 2.46.0, OpenSSH 10.2p1 (`ssh` on PATH), `rg`
-  15.2.0, `fd` 10.5.0, `git`.
-- `~/.local/bin` (on PATH): `cloudflared` (tunneling), `mise`, plus session binaries.
-- `pnpm` 11.25.0 is pinned via mise (`~/.config/mise/config.toml`) — prefer npm
-  workspaces for new Node work unless the project already uses pnpm. `busybox`
-  is not installed.
+- Toolchain (verified 2026-09-25): `node` v24.20.0 (via `mise`, PATH-first),
+  `npm` 11.19.0, `python3` 3.14.4, `uv`/`uvx` 0.12.17, `mise` 2026.9.1,
+  `docker` 29.8.0 + `docker compose` v5.5.1, `gh` 2.46.0, OpenSSH 10.2p1
+  (`ssh` on PATH), `rg` 15.2.0, `fd` 10.5.0, `git` 2.53.0. `busybox` is not
+  installed. Where each resolves from matters, so read this before trusting a
+  version claim:
+  - **`python3` is mise's, not the system one.** It resolves to the mise shim
+    (`~/.local/share/mise/shims/python3` → mise's CPython 3.14.4). A system
+    `/usr/bin/python3` → `python3.14` also exists and reports the same 3.14.4,
+    so the version looked "system" by coincidence. Project venvs built with
+    `uv venv` point at whichever `python3` was current — check
+    `readlink -f .venv/bin/python` before assuming an interpreter.
+  - **`uv`/`uvx` come from snap** (`/snap/bin/uv`), not mise. Version pins live
+    in `~/.config/mise/config.toml` (`go`, `node`, `pnpm` only).
+  - **`rg` and `fd` are Pi's own binaries** under `~/.pi/agent/bin`, not distro
+    packages — so they are on PATH for Pi sessions only (see the PATH caveat).
+  - `mise` itself self-reports 2026.9.14 as available; the installed build is
+    2026.9.1. `mise self-update` is not automatic.
+- **`~/.local/bin` is NOT on `PATH` for a non-interactive shell — this is a real
+  finding, not a nit.** `~/.bash_profile` is a copy of `~/.bashrc` and opens
+  with the `case $- in *i*) ;; *) return;; esac` guard, so *every* PATH line in
+  it (`~/.local/bin` at line 122, the mise `activate` eval, the node install
+  dir) is dead code for any non-interactive consumer. Verified: `env -i
+  HOME=/home/johnn bash -c 'command -v mise'` → not found, and even
+  `bash -lc` does not get `~/.local/bin` (bash reads `~/.bash_profile`, which
+  shadows the correct unguarded block in `~/.profile`). It resolves inside Pi
+  sessions only because the Pi harness injects `PATH` itself. Anything run
+  outside Pi — cron, `ssh host cmd`, another agent, a compose service — will not
+  see `cloudflared` or `mise`; use absolute paths there.
+- `pnpm` 11.25.0 is mise's own build and it executes fine (no `libatomic.so.1`
+  problem, unlike neotokyo) — corepack 0.35.0 is present but unused. It was
+  *unregistered* until 2026-09-25: `~/.local/share/mise/installs/pnpm/11.25.0`
+  existed while `[tools]` in `~/.config/mise/config.toml` omitted it, so every
+  `pnpm` call died with `mise ERROR No version is set for shim: pnpm`. Fixed
+  with `mise use -g pnpm@11.25.0`; the `[tools]` table now lists it. Prefer npm
+  workspaces for new Node work unless the project already uses pnpm.
 - uv provisions its own CPython for project venvs — always use the project
   `.venv` python. All package management via `uv`; never
   `pip install --break-system-packages`.
@@ -272,14 +303,20 @@ _Only valid when `~/piworkspace/saturn.host` is present._
 | Global context | `~/.pi/agent/AGENTS.md` → symlink to this file |
 | Durable bins | `~/.local/bin` — `cloudflared`, `mise`, session binaries |
 | Bin skills | `~/bin/`-style dirs per project; Pi's own bin under `~/.pi/agent/bin` |
-| Display | `Xvfb :99` (1366x768x24) for headed Chromium (camofox uses `DISPLAY=:99`) |
+| Display | `Xvfb :99` (1366x768x24) for headed Chromium (camofox uses `DISPLAY=:99`) — running as of 2026-09-25, socket `/tmp/.X11-unix/X99` |
+| Stale skill copy | `~/piworkspace/opcd-skills/` — a **separate git clone** holding a diverged duplicate of all three skills (`dev-best-practices`, `git-amirulcyber`, `openspec`). Deprecated; `pi-skills` is canonical. Note `git-env.sh`'s legacy credential fallback resolves `../dir-git-amirulcyber/opcd-skills/…` (neotokyo's layout) and therefore finds nothing here — harmless, since the canonical key is present. |
 
 **Docker (via dind socket).**
 
 - Daemon is a dind-sidecar reached at `unix:///var/run/docker.sock` (default
-  context; no `DOCKER_HOST` needed — verified 2026-09-06: `docker run --rm
+  context; no `DOCKER_HOST` needed — re-verified 2026-09-25: `docker run --rm
   hello-world` OK, `docker compose up` OK). The `DOCKER_HOST=tcp://127.0.0.1:2375`
   note in the neotokyo profile applies to the opencode container, NOT here.
+- `docker compose` (plugin form) is the **only** working spelling: the plugin is
+  the distro build at `/usr/libexec/docker/cli-plugins/docker-compose` and there
+  is no standalone `docker-compose` binary, so a command written as
+  `docker-compose …` fails outright. A missing plugin masquerades as a broken
+  daemon — check the plugin path before suspecting the socket.
 - Container published ports bind on the VM's interfaces (0.0.0.0) — reachable
   from the user's host at `http://10.148.0.3:<port>` **after** opening the port
   in ufw (Docker's NAT/FORWARD chains may bypass ufw INPUT for container ports;
@@ -301,11 +338,18 @@ per the shared Git section.
 `~/piworkspace/piproject/bugbounty/`; `AUTHORIZATION.md` is the authorization,
 its `SKILL.md` is the `pentest-bug-bounty` router. `SKILL_ROOT` for the
 engagement (from `20260920-1011-saturn-tools-setup.md`) is
-`/home/johnn/piworkspace/piproject/bugbounty` — commands reference `$SKILL_ROOT`
-rather than hardcoding it, and the pentest toolchain (massdns, nuclei + its
-templates, subfinder, subzy, httpx, ffuf, …) is installed natively in
-`~/.local/bin` here. Browser legs for engagements run on this host, pointed at
-the neotokyo residential SOCKS leg when a target needs a non-datacenter IP.
+`/home/johnn/piworkspace/piproject/bugbounty` (export it as `BB_ROOT` and
+`cd "$BB_ROOT"` first; `BB_ROOT` is **not** set in the environment by default) —
+commands reference `$SKILL_ROOT` rather than hardcoding it, and the pentest
+toolchain is installed natively: `nuclei`, `subfinder`, `subzy`, `httpx`, `ffuf`
+in `~/.local/bin`, and `massdns` in `/usr/local/bin` (not `~/.local/bin`, unlike
+the rest). Browser legs for engagements run on this host, pointed at the
+neotokyo residential SOCKS leg when a target needs a non-datacenter IP.
+
+The two hosts keep **separate checkouts** of this repo — saturn's is at
+`piproject/bugbounty`, neotokyo's at `~/piworkspace/bugbounty`, and only the
+saturn path exists on this VM (verified 2026-09-25). Never treat them as one
+working tree.
 
 **AI red-team research.** `~/piworkspace/pi-skills/bounty-recon` and the
 `ai-security` work; the multi-host tooling rules in this file apply.
