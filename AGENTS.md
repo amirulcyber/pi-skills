@@ -199,9 +199,10 @@ and no activation is needed.
 resolves every path from its own location — it is the single source of truth on
 both hosts — and exports `GIT_SSH_COMMAND` (bundled key only), `GH_BIN` (durable
 `~/piworkspace/.local/bin/gh` first), and the session identity
-`pi-agent <pi-agent@users.noreply.github.com>` (same on both hosts, by owner
-decision 2026-09-25 — attribution only; auth is the bundled `amirulcyber` key).
-`gh auth login`
+`pi-agent <323469836+amirulcyber@users.noreply.github.com>` — the same on both
+hosts (owner decision 2026-09-25), using the account's registered noreply form
+so commits are attributed. This is attribution only; auth is the bundled
+`amirulcyber` key. `gh auth login`
 writes ephemeral `~/.config/gh`; the helper's `GH_TOKEN` (from
 `$SKILL_ROOT/git-amirulcyber/.env`) is what survives a recreate. New repos are
 private by default. The old

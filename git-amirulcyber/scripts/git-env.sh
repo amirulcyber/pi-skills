@@ -127,13 +127,15 @@ export GIT_SSH_COMMAND="\"$SSH_BIN\" -i \"$GIT_AMIRULCYBER_KEY\" -o IdentitiesOn
 # values still win, so a host can override by exporting before sourcing.
 #
 # This is attribution only — auth is the bundled key, which is the `amirulcyber`
-# account on both hosts. The noreply address must be registered under that
-# account's GitHub settings or commits will not be linked to it.
+# account on both hosts. The email MUST be that account's registered noreply
+# form `<id>+<username>@users.noreply.github.com`: GitHub rejects any other
+# `*.noreply.github.com` address ("use private email address toggle"), and an
+# unregistered one pushes fine but leaves commits unlinked to the account.
 # ---------------------------------------------------------------------------
 export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-pi-agent}"
-export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-pi-agent@users.noreply.github.com}"
+export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-323469836+amirulcyber@users.noreply.github.com}"
 export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-pi-agent}"
-export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-pi-agent@users.noreply.github.com}"
+export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-323469836+amirulcyber@users.noreply.github.com}"
 
 # ---------------------------------------------------------------------------
 # GitHub CLI binary: durable install first, then PATH.
