@@ -121,10 +121,10 @@ Mechanical rule→tool mapping:
 - `bash-guard-check.sh` — flags unguarded `VAR=$(… grep …)` under `set -e` (the silent-abort class above); wired into `lint.sh` as the bash floor.
 - `ts-qc-check.sh` — TypeScript/Node gate (see "TypeScript / Node tooling" below): pnpm build-approval sanity, placeholder-literal scan, lockfile-committed check, then `pnpm lint && pnpm typecheck && pnpm test`.
 
-`<SKILL_ROOT>` = this skill's directory, and its absolute value differs per host
-(`/workspace/pi-skills` on neotokyo, `~/piworkspace/pi-skills` on saturn) —
-resolve the host from the marker-file table in `../AGENTS.md`. Substitute
-before writing the path; never hardcode either one.
+`<SKILL_ROOT>` = this skill's directory. Its absolute value is
+`~/piworkspace/pi-skills` on both hosts today, but resolve it from the
+marker-file table in `../AGENTS.md` rather than hardcoding it — the hosts are
+meant to diverge again.
 
 **Ruff workflow (2026-09-02 — do NOT copy the ruleset):**
 - One canonical `ruff.toml` here; projects reference it via a 1-line `ruff.toml` containing
@@ -132,7 +132,7 @@ before writing the path; never hardcode either one.
   project file, never in the shared one.
 - Ruff is **pinned at 0.16.5**. Keep the durable binary in a host mount so it
   survives a container recreate, and symlink it onto PATH (neotokyo: durable bins
-  are `/workspace/.local/bin`; saturn: `~/.local/bin`). `lint.sh` pins the same
+  are `~/piworkspace/.local/bin`; saturn: `~/.local/bin`). `lint.sh` pins the same
   version via `uvx ruff@0.16.5` so it stays reproducible even without the local install.
 - Run **bare `ruff check .`** from any project that has the pointer — it resolves the curated
   set. Never run bare ruff with *no* config: that silently uses ruff defaults (S324, DTZ006, …),

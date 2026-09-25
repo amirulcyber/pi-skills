@@ -2,8 +2,8 @@
 
 > **Loading notes.** On saturn, `~/.pi/agent/AGENTS.md` is a symlink to this
 > file, so Pi loads it at startup for every session. In the opencode container,
-> `/workspace/AGENTS.md` and the `build` agent prompt in `opencode.json` point
-> here. Edit here (github-backed: `amirulcyber/pi-skills`); no sync step.
+> `~/piworkspace/AGENTS.md` and the `build` agent prompt in `opencode.json`
+> point here. Edit here (github-backed: `amirulcyber/pi-skills`); no sync step.
 
 ## Step 0 — resolve the host before using any path in this file
 
@@ -13,27 +13,36 @@ subprocess, no `hostname` call per session:
 
 | Host | Marker file (its existence is the answer) |
 |---|---|
-| `neotokyo` | `/workspace/neotokyo.host` |
+| `neotokyo` | `~/piworkspace/neotokyo.host` |
 | `saturn` | `~/piworkspace/saturn.host` |
 
-Check both paths (one read/glob each, or in bash `[ -f /workspace/neotokyo.host ]` /
+Check both paths (one read/glob each, or in bash `[ -f ~/piworkspace/neotokyo.host ]` /
 `[ -f ~/piworkspace/saturn.host ]`); the markers live in host-specific locations,
 so at most one can match. The filename **is** the host id — no mapping to
 remember. The marker is a presence token, contents are not read.
 
+> Use the real mount path (`~/piworkspace/…`), **not** the `/workspace`
+> compatibility symlink. That symlink exists only so a stale pre-migration path
+> resolves instead of silently writing into an unmounted directory; do not add
+> new references to it.
+
 | Host | Environment | `HOME` | `SKILL_ROOT` | Docker endpoint |
 |---|---|---|---|---|
-| `neotokyo` | opencode container (`opencode-cli`) on the neotokyo laptop | `/home/appuser` | `/workspace/pi-skills` | dind sidecar, `DOCKER_HOST=tcp://127.0.0.1:2375` |
-| `saturn` | Pi agent on the GCP VM | `/home/johnn` | `~/piworkspace/pi-skills` | dind sidecar, default socket |
+| `neotokyo` | opencode container (`opencode-cli`) on the neotokyo laptop | `~/` (`/home/johnn`) | `~/piworkspace/pi-skills` | dind sidecar, `DOCKER_HOST=tcp://127.0.0.1:2375` |
+| `saturn` | Pi agent on the GCP VM | `~/` (`/home/johnn`) | `~/piworkspace/pi-skills` | dind sidecar, default socket |
 
 Apply **only** the matching host profile below. The other profile is not an
-approximation of this one — it is wrong here (`~/piworkspace` does not exist on
-neotokyo; `tcp://127.0.0.1:2375` is not the Docker endpoint on saturn). Shared
+approximation of this one — it is wrong here (`tcp://127.0.0.1:2375` is not the
+Docker endpoint on saturn, which is a bare VM with ufw in front of it). Shared
 sections below carry no host paths and are safe everywhere; anything with a
-concrete path lives under a host profile. If neither marker exists (a machine
-not yet stamped), fall back to `hostname` once — and if that is neither value,
-stop and ask which environment is meant rather than guessing. To stamp a new
-host, `touch <workspace-root>/<host>.host`.
+concrete path lives under a host profile. The two hosts' `HOME` and workspace
+paths are the same string now, so the marker is worth keeping only for the
+genuinely divergent facts (Docker endpoint, toolchain, durable bins, ufw) — but
+resolve it anyway, because the next divergence should not require editing this
+file. If neither marker exists (a machine not yet stamped), fall back to
+`hostname` once — and if that is neither value, stop and ask which environment is
+meant rather than guessing. To stamp a new host,
+`touch ~/piworkspace/<host>.host`.
 
 ## Principles & Quality Discipline
 
@@ -99,10 +108,10 @@ host, `touch <workspace-root>/<host>.host`.
 
 # Host profile — `neotokyo` (opencode container)
 
-_Only valid when `/workspace/neotokyo.host` is present._
+_Only valid when `~/piworkspace/neotokyo.host` is present._
 
 **Identity.** Container `opencode-cli`, built from
-`/workspace/opencode-infrastructure/` — its `docker-compose.yml` and
+`~/piworkspace/opencode-infrastructure/` — its `docker-compose.yml` and
 `HANDOVER.md` are authoritative for the stack; re-read them before rebuilding.
 It runs with `network_mode: host`, so it shares the laptop's network namespace
 (sees `wlp0s20f3`, `tailscale0`, docker bridges). No capabilities, no sudo, no
@@ -112,35 +121,65 @@ system `ssh`/`docker` clients.
 
 | What | Value here |
 |---|---|
-| `HOME` | `/home/appuser` |
-| Workspace | `/workspace` (host `/home/johnn/Projects/OpenCodeProjects` — a mount, so it survives rebuilds) |
-| `SKILL_ROOT` | `/workspace/pi-skills` (this file's directory) |
-| Secondary skill tree | `/workspace/dir-git-amirulcyber/opcd-skills` (carries the opencode `git-env.sh` and its gitignored `.env`/key) |
-| Durable bins | `/workspace/.local/bin` — `gh`, `ssh`, `busybox` |
-| Session bins | `~/.local/bin` — `ssh`/`scp`/`ssh-*`, `uv`/`uvx`, `mise`, `pnpm`/`pn`/`pnpx`/`pnx`, `docker` (static 27.5.1), `docker-compose` (v5.5.1, also the `docker compose` plugin) |
-| Scratch | `/tmp/opencode` (host mount, survives rebuilds); if it returns EACCES, use `~/.cache` instead |
-| Token helper | `/workspace/bin/opencode-tokens` |
+| `HOME` | `/home/johnn` (user `johnn`, uid 1000 — renamed from `appuser` in the 2026-09-25 migration so `~` resolves inside the container) |
+| Workspace | `~/piworkspace` (host `/home/johnn/piworkspace`, a btrfs bind mount — it survives rebuilds) |
+| Compat symlink | `/workspace` → `~/piworkspace`. Deliberate and temporary: it makes a pre-migration path resolve instead of silently writing into an unmounted dir. Nothing new should use it. |
+| `SKILL_ROOT` | `~/piworkspace/pi-skills` (this file's directory) |
+| Secondary skill tree | `~/piworkspace/dir-git-amirulcyber/opcd-skills` — **deprecated**; it no longer holds credentials, only a stale copy of `git-env.sh` |
+| Durable bins | `~/piworkspace/.local/bin` — `gh`, `ssh`, `busybox` (all real binaries, not shims) |
+| Session bins | `~/.local/bin` — a bind mount from host `/home/johnn/local-bin-opencode`, so it also survives a recreate. mise shims, `pnpm`, `docker` (static 27.5.1), `docker-compose` |
+| Scratch | `$SCRATCH` = `/tmp/opencode` — a **tmpfs**, RAM-backed, wiped every recreate. Throwaway work only; real artifacts belong in `~/piworkspace` |
+| Token helper | `~/piworkspace/bin/opencode-tokens` |
 | Repos | `bugbounty/`, `ai-security/`, `elelong/`, `met_malaysia/`, `garudasafe/`, `OpenTrainAi/` |
 
-Ensure `PATH` includes `$HOME/.local/bin`.
+**`PATH` comes from the image, not a profile.** The agent's tool shell runs
+non-interactive and sources no profile at all, so anything below the
+`case $- in *i*)` guard in `~/.bashrc` is dead code for the agent, and no amount
+of profile editing can fix it. The durable `PATH` is `ENV PATH` in the
+Dockerfile: `~/.local/share/mise/shims` first (so the `~/.config/mise/config.toml`
+pins win), then `~/.local/bin`. Do not move the toolchain block into `.bashrc`.
 
-**Toolchain** (verified 2026-09-04/05): `uv` 0.12.9 + `uvx`, `mise` 2026.9.1,
-`node` v22.23.2, `npm` 10.9.8, system `python3` 3.11.2, OpenSSH 9.2p1.
-`uv` provisions CPython 3.13 for project venvs — always use the project `.venv`
-python. Host-created `.venv` symlinks (e.g. into `/home/johnn/...`) are stale in
-this container; recreate with `uv venv --python 3.13` + `uv pip install` rather
-than reusing them.
+**Toolchain** (verified 2026-09-25): `mise` 2026.9.14, `node` v24.20.0,
+`python3` 3.13.15, `uv`/`uvx` 0.12.18, `rg` 15.2.0, `fd` 10.5.0, `gh` 2.101.0,
+`docker` 27.5.1, `docker-compose` v5.5.1, `pnpm` 11.25.0. Version pins live in
+`~/.config/mise/config.toml`; `~/.local/bin` entries for the mise tools are
+symlinks into `~/.local/share/mise/shims`, so a plain `PATH` prepend is enough
+and no activation is needed.
 
-**Node/pnpm.** The mise pnpm binary is broken here (`libatomic.so.1`) — use the
-PATH pnpm 11.25.0. If a project needs the mise node build, prepend it:
-`export PATH="$HOME/.local/share/mise/installs/node/24.20.0/bin:$HOME/.local/bin:$PATH"`.
-npm projects may hit the install-scripts allowlist (e.g. esbuild postinstall) —
-approve with `npm install-scripts approve <pkg>`.
+- **There is no system Python in this image** — no `/usr/bin/python3`, no
+  `/usr/lib/python3*`. mise's 3.13.15 is the only interpreter, so it is the one
+  to use for `uv venv` too (and it matches the 3.13 the project venvs expect).
+  A venv created on another machine/container has a dangling
+  `.venv/bin/python` symlink — the activation scripts still look fine, so the
+  breakage is silent. Recreate with `uv venv --python 3.13` + `uv pip install`;
+  never reuse one.
+- **`ssh` is OpenSSH 9.9p2** at `~/piworkspace/.local/bin/ssh` (extracted Debian
+  `.deb`, not a system package).
+- **pnpm is corepack's build, deliberately.** mise's native pnpm needs
+  `libatomic.so.1`, which this image lacked until `libatomic1` was added to the
+  apt layer; `pnpm` was removed from `mise use -g` so the broken shim cannot
+  shadow it. `COREPACK_HOME` is on the bind mount, so the pinned 11.25.0 build
+  survives a recreate. Keep it that way unless the native build is verified.
+- **npm projects** may hit the install-scripts allowlist (e.g. esbuild
+  postinstall) — approve with `npm install-scripts approve <pkg>`. pnpm instead
+  uses `allowBuilds` in `pnpm-workspace.yaml`.
+- **pnpm's store is `<workspace root>/.pnpm-store`**, found by walking up to the
+  outermost `pnpm-workspace.yaml`. A `node_modules/.modules.yaml` that records
+  the *symlinked* path (`/workspace/.pnpm-store`) instead of the real one makes
+  pnpm demand a full `node_modules` purge on the next install — literal string
+  comparison, even though both paths are the same directory. If that happens,
+  `CI=true pnpm install --frozen-lockfile` is the fix; it relinks from the local
+  store.
 
 **Docker (via `opencode-dind`).**
 
-- `export DOCKER_HOST=tcp://127.0.0.1:2375` (+ `PATH="$HOME/.local/bin:$PATH"`);
-  verified 2026-09-05: `docker run --rm hello-world` OK, `docker compose ls` OK.
+- `export DOCKER_HOST=tcp://127.0.0.1:2375`. Verified 2026-09-25: server
+  27.5.1, `docker compose version` OK.
+- Neither the image's docker CLI nor the static tarball carries a compose
+  plugin, so `~/.config/docker/cli-plugins/docker-compose` is symlinked to the
+  mise install and `ENV DOCKER_CONFIG` points at that bind-mounted dir. Without
+  it `docker compose` fails while standalone `docker-compose` works — a
+  confusing split, not a regression.
 - The daemon is the host-side `opencode-dind` container (`docker:27-dind`);
   loopback-only and no TLS, so 2375 must never be exposed to the LAN.
 - Container-name DNS never works (shared host netns) — use `127.0.0.1` plus
@@ -151,21 +190,22 @@ approve with `npm install-scripts approve <pkg>`.
 - A service restart-looping after first boot is usually a failed init migration:
   fix the SQL/config, then `docker compose down -v` before retrying — Postgres
   initdb only runs once per volume.
-- Plain `/tmp` does NOT survive a rebuild; durable scratch is `/tmp/opencode`.
+- Plain `/tmp` does NOT survive a rebuild; `/tmp/opencode` does not either (it is
+  a tmpfs). Only the `~/piworkspace` bind mount is durable.
 
 **Git.** Preflight:
 `bash $SKILL_ROOT/git-amirulcyber/scripts/git-env.sh --check`
-(= `/workspace/pi-skills/git-amirulcyber/scripts/git-env.sh` here). That helper
+(= `~/piworkspace/pi-skills/git-amirulcyber/scripts/git-env.sh` here). That helper
 resolves every path from its own location — it is the single source of truth on
 both hosts — and exports `GIT_SSH_COMMAND` (bundled key only), `GH_BIN` (durable
-`/workspace/.local/bin/gh` first), and the session identity
+`~/piworkspace/.local/bin/gh` first), and the session identity
 `opcdamirulcyber <opcdamirulcyber@users.noreply.github.com>`. `gh auth login`
 writes ephemeral `~/.config/gh`; the helper's `GH_TOKEN` (from
 `$SKILL_ROOT/git-amirulcyber/.env`) is what survives a recreate. New repos are
 private by default. The old
 `dir-git-amirulcyber/opcd-skills/git-amirulcyber/` tree is **deprecated** — the
-helper falls back to it for credentials only, and warns on stderr until the
-one-off copy in that skill's SKILL.md is done.
+helper still falls back to it for credentials, and warns on stderr, but the
+canonical copy in `pi-skills` is present and the warning is not expected.
 
 **Bug Bounty (standing authorization, 2026-09-20).** Repo `bugbounty/`.
 `bugbounty/AUTHORIZATION.md` is the authorization; `bugbounty/SKILL.md` is the

@@ -12,9 +12,9 @@ process killed mid-run, host reboot) gets a heartbeat monitor.
 ## Key & tooling
 
 - `$SKILL_ROOT` in this file = this skill's directory. Its absolute value is
-  per host (`/workspace/pi-skills` on neotokyo, `~/piworkspace/pi-skills` on
-  saturn) — resolve the host from the marker-file table in `../AGENTS.md`
-  (no `hostname` call needed). Never hardcode either path.
+  `~/piworkspace/pi-skills` on both hosts today, but resolve it from the
+  marker-file table in `../AGENTS.md` rather than hardcoding it — the two hosts
+  are meant to diverge again (no `hostname` call needed).
 - API key: `$SKILL_ROOT/cronitor/.env` (`CRONITOR_API_KEY=...`,
   chmod 600, gitignored — management API only)
 - Ping key: same file (`CRONITOR_PING_KEY=...`) — telemetry-only, used in

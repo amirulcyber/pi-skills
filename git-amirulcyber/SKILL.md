@@ -9,7 +9,7 @@ Use this skill for Git operations for the configured GitHub account.
 
 **Single source of truth.** `$SKILL_ROOT/git-amirulcyber/` holds the helper,
 the docs, and the credentials. The old
-`/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/` tree is
+`~/piworkspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/` tree is
 **deprecated** — source this skill's `git-env.sh`; it falls back to the old
 location for credentials only until they are migrated (see below), and prints a
 warning on stderr while that fallback is in use.
@@ -30,8 +30,8 @@ reading, not for typing. Resolve the host from the marker-file table in
 
 | What | neotokyo (opencode container) | saturn (Pi VM) |
 |---|---|---|
-| `SKILL_ROOT` | `/workspace/pi-skills` | `~/piworkspace/pi-skills` |
-| Durable `gh` | `/workspace/.local/bin/gh` | `~/.local/bin/gh` or system `gh` |
+| `SKILL_ROOT` | `~/piworkspace/pi-skills` | `~/piworkspace/pi-skills` |
+| Durable `gh` | `~/piworkspace/.local/bin/gh` | `~/.local/bin/gh` or system `gh` |
 | `GIT_ENV` | `$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh` | same path, different `SKILL_ROOT` |
 | Default identity | `opcdamirulcyber` | `opcdamirulcyber`; export `GIT_AUTHOR_*`/`GIT_COMMITTER_*` before sourcing to use `pi-agent` instead |
 
@@ -55,15 +55,20 @@ printf 'GH-PAT-AMIRULCYBER-OPCD=%s\n' "YOUR_TOKEN" > "$SKILL_ROOT/git-amirulcybe
 chmod 600 "$SKILL_ROOT/git-amirulcyber/.env"
 ```
 
-## Migrating credentials out of the deprecated tree (one-off, neotokyo)
+## Copying credentials into this skill dir (per host, one-off)
 
-The consolidated helper still reads `key_opencode_2026` / `.env` / `gh_token`
-from `/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/` when they
-are absent here, and warns on stderr. To finish the move, copy them across
-(never `cat` — the key must not hit a transcript) and re-run the preflight:
+The helper reads `key_opencode_2026` / `.env` / `gh_token` from this skill dir
+first, and only falls back to the deprecated tree
+(`~/piworkspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber/`, resolved
+relative to the skills root) when a file is missing here — warning on stderr
+while it does. **Each host needs its own copy.** neotokyo's was migrated
+2026-09-25 (preflight passes with no warning); saturn's is still outstanding.
+
+To finish the move on a host, copy the files across (never `cat` — the key must
+not hit a transcript) and re-run the preflight:
 
 ```bash
-cd /workspace
+cd ~/piworkspace
 cp -p dir-git-amirulcyber/opcd-skills/git-amirulcyber/key_opencode_2026  pi-skills/git-amirulcyber/
 cp -p dir-git-amirulcyber/opcd-skills/git-amirulcyber/key_opencode_2026.pub pi-skills/git-amirulcyber/
 cp -p dir-git-amirulcyber/opcd-skills/git-amirulcyber/.env             pi-skills/git-amirulcyber/
@@ -82,8 +87,8 @@ anything in that dir. Once the preflight is clean, the deprecated tree can go.
 `gh` lives in the host's durable bin dir, which is why the helper resolves it
 rather than hardcoding one:
 
-- neotokyo: `/workspace/.local/bin/gh` (survives a container recreate), with
-  `/home/appuser/.local/bin/gh` first on PATH
+- neotokyo: `~/piworkspace/.local/bin/gh` (survives a container recreate), with
+  the mise shim `~/.local/bin/gh` first on PATH
 - saturn: `~/.local/bin/gh` or the system `gh` (2.46.0)
 
 The helper script exports `GH_BIN` (durable binary first, then PATH). Source it once:
@@ -96,7 +101,7 @@ To resolve `gh` manually:
 
 ```bash
 GH_BIN="$(command -v gh || true)"
-[ -n "$GH_BIN" ] || GH_BIN="/workspace/.local/bin/gh"   # neotokyo durable path
+[ -n "$GH_BIN" ] || GH_BIN="$HOME/piworkspace/.local/bin/gh"   # neotokyo durable path
 ```
 
 Before GitHub-side API operations such as `gh repo create`, verify CLI authentication:
@@ -153,7 +158,7 @@ source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
 
 The helper resolves an `SSH_BIN` before anything else: first working `ssh` on
 `PATH` (`ssh -V` must run), then the host's durable bin dir
-(`$GIT_DURABLE_BIN` — `/workspace/.local/bin` on neotokyo), then
+(`$GIT_DURABLE_BIN` — `~/piworkspace/.local/bin` on neotokyo), then
 `~/.local/bin/ssh`. `GIT_SSH_COMMAND` uses that absolute path, so git-over-SSH
 no longer depends on ambient `PATH` — this fixed a session where no system
 client existed (`cannot run ssh`). If no binary is found anywhere, sourcing
@@ -336,7 +341,7 @@ git push -u origin main
 If it does not exist, use the installed GitHub CLI to create the GitHub-side repository, then push the local `main` branch. Keep repository creation explicit and non-destructive. The default is **private** (see "Repository visibility policy"):
 
 ```bash
-GH_BIN="${GH_BIN:-/workspace/.local/bin/gh}"
+GH_BIN="${GH_BIN:-$HOME/piworkspace/.local/bin/gh}"
 "$GH_BIN" repo create "amirulcyber/$REPO_NAME" --source=. --remote=origin --push --private
 ```
 

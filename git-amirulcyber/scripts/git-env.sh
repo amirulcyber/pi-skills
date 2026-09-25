@@ -3,8 +3,8 @@
 #
 # Single source of truth for GitHub auth across hosts. Canonical location:
 #   $SKILL_ROOT/git-amirulcyber/scripts/git-env.sh
-# ($SKILL_ROOT = the pi-skills root — /workspace/pi-skills on neotokyo,
-#  ~/piworkspace/pi-skills on saturn. Host table: ../AGENTS.md)
+# ($SKILL_ROOT = the pi-skills root — ~/piworkspace/pi-skills on both hosts.
+#  Host table: ../AGENTS.md)
 #
 # SOURCE it to export the Git/gh environment for amirulcyber operations:
 #   source "$SKILL_ROOT/git-amirulcyber/scripts/git-env.sh"
@@ -27,7 +27,7 @@ GIT_SKILLS_ROOT="$(cd "$GIT_AMIRULCYBER_DIR/.." && pwd)"
 export GIT_SKILLS_ROOT
 
 # Durable bin dir is a sibling of the skills root, so its value differs per host
-# (neotokyo: /workspace/.local/bin, saturn: ~/.local/bin). Prepend each
+# (neotokyo: ~/piworkspace/.local/bin, saturn: ~/.local/bin). Prepend each
 # candidate that exists; a missing dir must never shadow PATH.
 GIT_DURABLE_BIN="$(cd "$GIT_SKILLS_ROOT/.." && pwd)/.local/bin"
 export GIT_DURABLE_BIN
@@ -54,7 +54,11 @@ GIT_AMIRULCYBER_ENV="$GIT_AMIRULCYBER_DIR/.env"
 GIT_AMIRULCYBER_TOKEN="$GIT_AMIRULCYBER_DIR/gh_token"
 export GIT_AMIRULCYBER_KEY GIT_AMIRULCYBER_ENV GIT_AMIRULCYBER_TOKEN
 
-GIT_AMIRULCYBER_LEGACY_DIR="/workspace/dir-git-amirulcyber/opcd-skills/git-amirulcyber"
+# The legacy tree is a sibling of the skills root, not an absolute path: on
+# neotokyo it sat at the workspace root, on saturn the same relative shape
+# holds. Deriving it keeps the fallback working without the /workspace
+# compatibility symlink, which is scheduled to go away.
+GIT_AMIRULCYBER_LEGACY_DIR="$(cd "$GIT_SKILLS_ROOT/.." && pwd)/dir-git-amirulcyber/opcd-skills/git-amirulcyber"
 GIT_AMIRULCYBER_LEGACY_USED=""
 for _f in key_opencode_2026 .env gh_token; do
     case "$_f" in
