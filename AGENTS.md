@@ -72,6 +72,13 @@ meant rather than guessing. To stamp a new host,
 - Python: project-local `pyright`:
   `.venv/bin/pyright --pythonpath .venv/bin/python <file>` (0 errors, 0 warnings).
 - TypeScript/Node: `tsc --noEmit` per workspace must be clean before declaring done.
+- **Toolchain invariants:** `python3 "$SKILL_ROOT/toolchain-check/toolchain_check.py"`
+  (stdlib only, no venv — a venv-backed checker is circular). Gates on
+  invariants, never version numbers: a clean non-interactive shell resolves the
+  toolchain, tools actually *run* (an unregistered mise shim exists on disk and
+  errors when invoked), no shim shadows a system binary, no dangling venv. Exit
+  `0`/`1`/`2`, machine-readable last line. Run it after any mise upgrade, host
+  migration, or "tool isn't found" report.
 - Quality gate: `$SKILL_ROOT/dev-best-practices/lint.sh` (compile, selftest,
   pytest, ruff, pyright, bash guard); TS helper: `ts-qc-check.sh`.
 - Before declaring done: gate clean + a runtime smoke test (scratch dir per host
@@ -266,8 +273,10 @@ _Only valid when `~/piworkspace/saturn.host` is present._
     file is first on `PATH`; check `python3 -c 'import sys; print(sys.executable)'`
     or `readlink -f .venv/bin/python`. This is why the venvs in
     `piproject/*/` point at `/usr/bin/python3.14` and that is correct.
-  - **`uv`/`uvx` come from snap** (`/snap/bin/uv`), not mise. Version pins live
-    in `~/.config/mise/config.toml` (`go`, `node`, `pnpm` only).
+  - **`uv`/`uvx` are the per-user installer build**, `~/.local/bin/uv` (v0.12.19),
+    not mise and not snap. The `astral-uv` snap was removed 2026-09-25 so there
+    is exactly one `uv`; a second copy on `PATH` is a silent "which uv?" hazard.
+    mise's `[tools]` holds only `go`, `node`, `pnpm` — Python is uv's alone.
   - **`rg` and `fd` are Pi's own binaries** under `~/.pi/agent/bin`, not distro
     packages — so they are on PATH for Pi sessions only (see the PATH caveat).
   - `mise` was updated 2026.9.1 → 2026.9.14 in place, which also brings this
@@ -290,9 +299,14 @@ _Only valid when `~/piworkspace/saturn.host` is present._
   in `~/.bashrc`. Backups: `~/shell-backup-<ts>/`. Two deliberate choices:
   - **The mise *shims* dir is not on `PATH`.** A shim for a tool with no active
     version aborts with `No version is set for shim: <tool>`, and it shadows
-    working system binaries — `pip` is the live example: shimmed it would error,
-    unshimmed it is `/usr/bin/pip`. This is the same failure that broke `pnpm`
-    before it was registered in `[tools]`.
+    working system binaries — `pip` was the live example: shimmed it would
+    error, unshimmed it is `/usr/bin/pip`. This is the same failure that broke
+    `pnpm` before it was registered in `[tools]`, and it produced 18 dead
+    Python-era shims here. They are gone: `mise uninstall python@3.12.14`
+    removed them itself, and mise only recreates a shim for a tool something
+    actually selects — so with no `python` in any `mise.toml`, none comes back.
+    `python3` still resolves to `/usr/bin/python3` via a *pass-through* shim
+    (mise does not manage it); `toolchain-check` asserts no shim aborts.
   - **A non-login, non-interactive shell still reads no rc file at all**, so
     `ssh saturn 'mise …'` needs absolute paths (`~/.local/bin/mise`) or a
     `BASH_ENV`. That gap is inherent to bash, not to this layout.
