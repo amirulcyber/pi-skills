@@ -65,6 +65,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("create")
     p.add_argument("--name", default="agent")
+    p = sub.add_parser("inboxes")
     p = sub.add_parser("list")
     p.add_argument("--inbox", required=True)
     p.add_argument("--limit", type=int, default=10)
@@ -92,6 +93,15 @@ def main() -> int:
     if a.cmd == "create":
         s, d = call("POST", "/v0/inboxes", {"name": a.name}, key=key)
         print(json.dumps(d)[:400])
+        return 0
+    if a.cmd == "inboxes":
+        s, d = call("GET", "/v0/inboxes", key=key)
+        items = d if isinstance(d, list) else (d.get("inboxes") or d.get("data") or [])
+        for ib in items:
+            print(ib.get("inbox_id") or ib.get("id") or "?",
+                  "|", ib.get("email") or ib.get("inbox") or "?",
+                  "|", ib.get("created_at", ""))
+        print(f"{len(items)} inbox(es)")
         return 0
     if a.cmd == "list":
         s, d = call("GET", f"/v0/inboxes/{a.inbox}/messages?"

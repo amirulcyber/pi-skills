@@ -18,6 +18,7 @@ page-flow, raw third-party mail stays out of reports.
    round-trip below.
 
 ## Script (`am_mail.py`, stdlib only, fail-loud)
+- `inboxes` — GET /v0/inboxes; prints `inbox_id | address | created_at`.
 - `create [--name N]` — POST /v0/inboxes → prints inbox id + address.
 - `list --inbox ID [--limit N]` — GET messages (id/subject/from/date).
 - `read --inbox ID --msg MID [--out file]` — GET full message.
@@ -26,6 +27,25 @@ page-flow, raw third-party mail stays out of reports.
 - `poll --inbox ID [--timeout S]` — list until arrival or timeout.
 - Non-zero exit + server error body on any failure. Zero-message listings
   print `0 messages` (exit 0 only for list/poll-timeout).
+
+### `--inbox` takes the address, not a lookup key
+
+**`inbox_id` *is* the email address.** AgentMail sets them to the same string, so
+`--inbox heydonkey@agentmail.to` is correct and complete — there is nothing to
+resolve first. `create` echoes both fields and they will be identical; that is
+expected, not a display bug.
+
+To see what you have: `python3 am_mail.py inboxes`. Reach for it only to
+*discover* an address you don't already know, e.g. after `create` in another
+session. Do not hand-write a `GET /v0/inboxes` probe to look one up — the
+subcommand exists for that.
+
+```bash
+python3 am_mail.py inboxes                                    # discover addresses
+python3 am_mail.py poll  --inbox heydonkey@agentmail.to      # wait for arrival
+python3 am_mail.py list  --inbox heydonkey@agentmail.to      # id/subject/from
+python3 am_mail.py read  --inbox heydonkey@agentmail.to --msg '<…@…>'
+```
 
 ## Notes
 - Response envelope and error shape (`code` snake_case — branch on it, not
