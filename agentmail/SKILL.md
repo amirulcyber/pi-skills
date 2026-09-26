@@ -21,7 +21,12 @@ page-flow, raw third-party mail stays out of reports.
 - `inboxes` — GET /v0/inboxes; prints `inbox_id | address | created_at`.
 - `create [--name N]` — POST /v0/inboxes → prints inbox id + address.
 - `list --inbox ID [--limit N]` — GET messages (id/subject/from/date).
-- `read --inbox ID --msg MID [--out file]` — GET full message.
+- `read --inbox ID --msg MID [--out file] [--head N]` — GET full message.
+  Prints the **whole** message as valid JSON, so `read … | jq` works. It used to
+  print only the first 3000 characters, which cut the document mid-string and
+  made every pipe into `jq`/`json.load` fail with a confusing "invalid control
+  character" at the truncation point. `--head N` is now the opt-in bounded view
+  and says on its last line that it is truncated.
 - `send --inbox ID --to ADDR --subject S [--text T | --body-file F]`
 - `reply --inbox ID --msg MID --text T`
 - `poll --inbox ID [--timeout S]` — list until arrival or timeout.

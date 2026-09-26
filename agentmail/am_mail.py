@@ -73,6 +73,9 @@ def main() -> int:
     p.add_argument("--inbox", required=True)
     p.add_argument("--msg", required=True)
     p.add_argument("--out", default="")
+    p.add_argument("--head", type=int, default=0,
+                   help="print only the first N chars, clearly marked truncated "
+                        "(default 0 = print the whole message as valid JSON)")
     p = sub.add_parser("send")
     p.add_argument("--inbox", required=True)
     p.add_argument("--to", required=True)
@@ -117,8 +120,15 @@ def main() -> int:
         if a.out:
             open(a.out, "w").write(out)
             print(f"saved {a.out} ({len(out)} bytes)")
+        elif a.head:
+            # A bounded *human* view. Labelled as truncated, and never the
+            # default: silently cutting JSON mid-string makes the output
+            # unparseable, which is worse than a long terminal.
+            print(out[:a.head])
+            print(f"... [truncated at {a.head} of {len(out)} chars —"
+                  " rerun without --head, or use --out FILE, for valid JSON]")
         else:
-            print(out[:3000])
+            print(out)
         return 0
     if a.cmd == "send":
         text = a.text or (open(a.body_file).read() if a.body_file else "")
