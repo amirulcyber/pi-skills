@@ -19,8 +19,12 @@ TEST_PY="${TEST_PY:-$PY}"
 PYRIGHT="${PYRIGHT:-$([ -x .venv/bin/pyright ] && echo .venv/bin/pyright || echo "")}"
 
 echo "== 1/7 compile =="
+# templates/ holds scaffolding that is deliberately not valid Python until it is
+# copied and filled in (e.g. ai-security's `{category_name}_scorer.py` templates),
+# so it must not be compiled. Same reason .venv and .git are excluded.
 mapfile -t files < <(find . -name '*.py' \
   -not -path '*/.venv*/*' -not -path '*/.git/*' -not -path '*/__pycache__/*' \
+  -not -path '*/templates/*' \
   2>/dev/null || true)
 if ((${#files[@]})); then
   "$PY" -m py_compile "${files[@]}"
